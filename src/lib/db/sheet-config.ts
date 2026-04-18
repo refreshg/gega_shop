@@ -1,5 +1,13 @@
+import type {
+  GoogleSpreadsheet,
+  GoogleSpreadsheetWorksheet,
+} from "google-spreadsheet";
+
+import { getGoogleSpreadsheet } from "@/lib/googleSheets";
+
 /** Worksheet titles inside the spreadsheet. */
 export const SHEETS = {
+  users: "Users",
   customers: "Customers",
   products: "Products",
   salesOrders: "SalesOrders",
@@ -12,6 +20,7 @@ export const SHEETS = {
  * support the existing UI and payment logic while staying compatible with the brief.
  */
 export const HEADERS: Record<string, readonly string[]> = {
+  [SHEETS.users]: ["id", "name", "pin", "role"],
   [SHEETS.customers]: [
     "id",
     "firstName",
@@ -19,8 +28,9 @@ export const HEADERS: Record<string, readonly string[]> = {
     "phone",
     "personalId",
     "createdAt",
+    "createdBy",
   ],
-  [SHEETS.products]: ["id", "name", "description", "price"],
+  [SHEETS.products]: ["id", "name", "description", "price", "createdBy"],
   [SHEETS.salesOrders]: [
     "id",
     "customerId",
@@ -29,6 +39,7 @@ export const HEADERS: Record<string, readonly string[]> = {
     "paymentTerms",
     "createdAt",
     "isConsignment",
+    "createdBy",
   ],
   [SHEETS.orderItems]: [
     "id",
@@ -44,14 +55,33 @@ export const HEADERS: Record<string, readonly string[]> = {
     "amountPaid",
     "paymentDate",
     "method",
+    "processedBy",
   ],
 };
 
-import type { GoogleSpreadsheet } from "google-spreadsheet";
-
-import { getGoogleSpreadsheet } from "@/lib/googleSheets";
-
 let ensured = false;
+
+/** Appends missing header cells so existing spreadsheets gain new columns safely. */
+export async function extendWorksheetHeaders(
+  sheet: GoogleSpreadsheetWorksheet,
+  desired: readonly string[],
+): Promise<void> {
+  await sheet.loadHeaderRow(1);
+  const current = [...sheet.headerValues];
+  const missing = desired.filter((h) => !current.includes(h));
+  if (missing.length === 0) return;
+
+  const merged = [...current, ...missing];
+
+  if (merged.length > sheet.columnCount) {
+    await sheet.resize({
+      columnCount: merged.length,
+      rowCount: Math.max(sheet.rowCount, 100),
+    });
+  }
+
+  await sheet.setHeaderRow(merged);
+}
 
 /** Creates missing worksheets with the expected header row. Safe to call once at startup. */
 export async function ensureWorksheets(doc: GoogleSpreadsheet): Promise<void> {
@@ -60,6 +90,17 @@ export async function ensureWorksheets(doc: GoogleSpreadsheet): Promise<void> {
   for (const [title, headerValues] of Object.entries(HEADERS)) {
     if (!doc.sheetsByTitle[title]) {
       await doc.addSheet({ title, headerValues: [...headerValues] });
+    }
+  }
+  await doc.loadInfo();
+  for (const title of Object.keys(HEADERS)) {
+    const sheet = doc.sheetsByTitle[title];
+    if (sheet) await sheet.loadHeaderRow(1);
+  }
+  for (const [title, headerValues] of Object.entries(HEADERS)) {
+    const sheet = doc.sheetsByTitle[title];
+    if (sheet) {
+      await extendWorksheetHeaders(sheet, headerValues);
     }
   }
   await doc.loadInfo();

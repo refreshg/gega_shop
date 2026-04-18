@@ -74,6 +74,11 @@ export default async function OrderDetailPage({
           ) : (
             <span>Unknown customer</span>
           )}
+          {order.createdBy ? (
+            <span className="mt-1 block text-xs text-zinc-500">
+              Order created by {order.createdBy}
+            </span>
+          ) : null}
         </p>
       </div>
 
@@ -182,13 +187,14 @@ export default async function OrderDetailPage({
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Method</TableHead>
+                <TableHead className="hidden sm:table-cell">Processed by</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {payments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-zinc-500">
+                  <TableCell colSpan={4} className="text-center text-zinc-500">
                     No payments recorded yet.
                   </TableCell>
                 </TableRow>
@@ -196,9 +202,17 @@ export default async function OrderDetailPage({
                 payments.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="whitespace-nowrap text-zinc-600">
-                      {formatDate(p.paymentDate)}
+                      <div>{formatDate(p.paymentDate)}</div>
+                      {p.processedBy ? (
+                        <p className="mt-0.5 text-xs text-zinc-500 sm:hidden">
+                          By {p.processedBy}
+                        </p>
+                      ) : null}
                     </TableCell>
                     <TableCell>{p.method}</TableCell>
+                    <TableCell className="hidden text-sm text-zinc-600 sm:table-cell">
+                      {p.processedBy || "—"}
+                    </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatMinorAsCurrency(p.amountPaidMinor)}
                     </TableCell>

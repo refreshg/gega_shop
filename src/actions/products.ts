@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+
+import { requireSession } from "@/lib/auth/require";
 import { invalidateSheetDbCache } from "@/lib/db/invalidate";
 import { appendProduct, deleteProductRow } from "@/lib/db/products";
 import { listOrderItems } from "@/lib/db/sales-orders";
@@ -44,11 +46,13 @@ export async function createProduct(
     parsed.data.price && parsed.data.price.trim() !== ""
       ? parseMoneyToMinor(parsed.data.price)
       : null;
+  const session = await requireSession();
   try {
     await appendProduct({
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       priceMinor,
+      createdBy: session.name,
     });
     invalidateSheetDbCache();
     revalidatePath("/products");
@@ -66,6 +70,7 @@ export type DeleteProductResult =
 export async function deleteProduct(
   productId: string,
 ): Promise<DeleteProductResult> {
+  await requireSession();
   const items = await listOrderItems();
   if (items.some((i) => i.productId === productId)) {
     return {

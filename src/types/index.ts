@@ -4,6 +4,15 @@ export type SalesOrderStatus =
   | "CONSIGNMENT"
   | "UNPAID";
 
+export type ShopUserRole = "admin" | "staff";
+
+export type ShopUser = {
+  id: string;
+  name: string;
+  pin: string;
+  role: ShopUserRole;
+};
+
 export type Customer = {
   id: string;
   firstName: string;
@@ -11,6 +20,7 @@ export type Customer = {
   phone: string;
   personalId: string;
   createdAt: Date;
+  createdBy: string;
 };
 
 export type Product = {
@@ -19,6 +29,7 @@ export type Product = {
   description: string | null;
   /** List price in minor currency units (e.g. tetri), null if unset */
   priceMinor: number | null;
+  createdBy: string;
 };
 
 export type SalesOrder = {
@@ -29,6 +40,7 @@ export type SalesOrder = {
   paymentTerms: string;
   isConsignment: boolean;
   createdAt: Date;
+  createdBy: string;
 };
 
 export type OrderLineItem = {
@@ -46,4 +58,5 @@ export type Payment = {
   amountPaidMinor: number;
   paymentDate: Date;
   method: string;
+  processedBy: string;
 };

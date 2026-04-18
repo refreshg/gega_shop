@@ -34,6 +34,8 @@ export type CustomerListItem = {
   phone: string;
   personalId: string;
   createdAt: string;
+  /** Who created the row (from sheet `createdBy`). */
+  createdBy: string;
 };
 
 function matchesCustomerQuery(c: CustomerListItem, q: string): boolean {
@@ -167,6 +169,7 @@ export function CustomersDirectory({
                 <TableHead>Name</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Personal ID</TableHead>
+                <TableHead className="hidden lg:table-cell">Added by</TableHead>
                 <TableHead>Since</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -174,13 +177,13 @@ export function CustomersDirectory({
             <TableBody>
               {customers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-zinc-500">
+                  <TableCell colSpan={6} className="text-center text-zinc-500">
                     No customers yet.
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-zinc-500">
+                  <TableCell colSpan={6} className="text-center text-zinc-500">
                     {emptyDirectoryMessage(query, dateFrom, dateTo)}
                   </TableCell>
                 </TableRow>
@@ -188,11 +191,19 @@ export function CustomersDirectory({
                 filtered.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">
-                      {c.firstName} {c.lastName}
+                      <div>{c.firstName} {c.lastName}</div>
+                      {c.createdBy ? (
+                        <p className="mt-0.5 text-xs font-normal text-zinc-500 lg:hidden">
+                          By {c.createdBy}
+                        </p>
+                      ) : null}
                     </TableCell>
                     <TableCell>{c.phone}</TableCell>
                     <TableCell className="font-mono text-sm">
                       {c.personalId}
+                    </TableCell>
+                    <TableCell className="hidden text-sm text-zinc-600 lg:table-cell">
+                      {c.createdBy || "—"}
                     </TableCell>
                     <TableCell className="text-zinc-600">
                       {formatDate(new Date(c.createdAt))}

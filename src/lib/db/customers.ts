@@ -13,6 +13,7 @@ function rowToCustomer(row: GoogleSpreadsheetRow): Customer {
     phone: String(row.get("phone") ?? "").trim(),
     personalId: String(row.get("personalId") ?? "").trim(),
     createdAt: parseDate(String(row.get("createdAt") ?? "")),
+    createdBy: String(row.get("createdBy") ?? "").trim(),
   };
 }
 
@@ -70,6 +71,7 @@ export async function appendCustomer(
     phone: data.phone,
     personalId: data.personalId,
     createdAt,
+    createdBy: data.createdBy,
   });
   return {
     id,
@@ -78,12 +80,13 @@ export async function appendCustomer(
     phone: data.phone,
     personalId: data.personalId,
     createdAt: new Date(createdAt),
+    createdBy: data.createdBy,
   };
 }
 
 export async function updateCustomerRow(
   id: string,
-  data: Omit<Customer, "id" | "createdAt">,
+  data: Omit<Customer, "id" | "createdAt" | "createdBy">,
 ): Promise<void> {
   const doc = await getReadySpreadsheet();
   const sheet = doc.sheetsByTitle[SHEETS.customers];

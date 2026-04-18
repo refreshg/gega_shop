@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+
+import { requireSession } from "@/lib/auth/require";
 import { addPaymentAndUpdateStatus } from "@/lib/db/payments";
 import { invalidateSheetDbCache } from "@/lib/db/invalidate";
 import { parseMoneyToMinor } from "@/lib/money";
@@ -45,12 +47,14 @@ export async function addPaymentToOrder(
     return { ok: false, error: "Invalid date." };
   }
 
+  const session = await requireSession();
   try {
     await addPaymentAndUpdateStatus({
       orderId: parsed.data.orderId,
       amountPaidMinor: amountMinor,
       method: parsed.data.method,
       paymentDate,
+      processedBy: session.name,
     });
 
     invalidateSheetDbCache();

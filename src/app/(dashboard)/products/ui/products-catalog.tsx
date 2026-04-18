@@ -28,6 +28,7 @@ export type ProductListItem = {
   name: string;
   description: string | null;
   priceMinor: number | null;
+  createdBy: string;
 };
 
 function matchesProductQuery(p: ProductListItem, q: string): boolean {
@@ -78,25 +79,34 @@ export function ProductsCatalog({ products }: { products: ProductListItem[] }) {
                 <TableHead>Name</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Default price</TableHead>
+                <TableHead className="hidden md:table-cell">Added by</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {products.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-zinc-500">
+                  <TableCell colSpan={5} className="text-center text-zinc-500">
                     No products yet.
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-zinc-500">
+                  <TableCell colSpan={5} className="text-center text-zinc-500">
                     No results found for &quot;{query.trim()}&quot;
                   </TableCell>
                 </TableRow>
               ) : (
                 filtered.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div>{p.name}</div>
+                      {p.createdBy ? (
+                        <p className="mt-0.5 text-xs font-normal text-zinc-500 md:hidden">
+                          By {p.createdBy}
+                        </p>
+                      ) : null}
+                    </TableCell>
                     <TableCell className="max-w-xs truncate text-zinc-600">
                       {p.description ?? "—"}
                     </TableCell>
@@ -104,6 +114,9 @@ export function ProductsCatalog({ products }: { products: ProductListItem[] }) {
                       {p.priceMinor != null
                         ? formatMinorAsCurrency(p.priceMinor)
                         : "—"}
+                    </TableCell>
+                    <TableCell className="hidden text-sm text-zinc-600 md:table-cell">
+                      {p.createdBy || "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="inline-flex items-center justify-end">

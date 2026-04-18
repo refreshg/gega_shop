@@ -25,6 +25,7 @@ export default async function ProductsPage() {
     name: p.name,
     description: p.description,
     priceMinor: p.priceMinor,
+    createdBy: p.createdBy,
   }));
 
   return (

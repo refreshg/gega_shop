@@ -3,6 +3,8 @@
 import type { SalesOrderStatus } from "@/types";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+
+import { requireSession } from "@/lib/auth/require";
 import { listCustomersCached } from "@/lib/db/customers";
 import { invalidateSheetDbCache } from "@/lib/db/invalidate";
 import {
@@ -101,6 +103,7 @@ export async function createSalesOrder(formData: FormData): Promise<CreateOrderR
     isConsignment: body.data.isConsignment,
   });
 
+  const session = await requireSession();
   try {
     const { orderId } = await createOrderSequential({
       customerId: body.data.customerId,
@@ -122,6 +125,8 @@ export async function createSalesOrder(formData: FormData): Promise<CreateOrderR
               paymentDate: new Date(),
             }
           : undefined,
+      createdBy: session.name,
+      processedBy: session.name,
     });
 
     invalidateSheetDbCache();
@@ -142,6 +147,7 @@ export type DeleteOrderResult =
   | { ok: false; message: string };
 
 export async function deleteOrder(orderId: string): Promise<DeleteOrderResult> {
+  await requireSession();
   const order = await getSalesOrderById(orderId);
   if (!order) {
     return { ok: false, message: "Order not found." };

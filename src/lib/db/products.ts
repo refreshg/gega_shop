@@ -20,6 +20,7 @@ function rowToProduct(row: GoogleSpreadsheetRow): Product {
       return String(d);
     })(),
     priceMinor,
+    createdBy: String(row.get("createdBy") ?? "").trim(),
   };
 }
 
@@ -53,6 +54,7 @@ export async function appendProduct(
       data.priceMinor === null || data.priceMinor === undefined
         ? ""
         : String(data.priceMinor),
+    createdBy: data.createdBy,
   });
   return { ...data, id };
 }

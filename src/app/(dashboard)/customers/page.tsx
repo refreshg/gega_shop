@@ -34,6 +34,7 @@ export default async function CustomersPage() {
       phone: c.phone,
       personalId: c.personalId,
       createdAt: toIsoSafe(c.createdAt),
+      createdBy: c.createdBy,
     }));
   } catch (e) {
     return (

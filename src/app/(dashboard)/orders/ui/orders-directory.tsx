@@ -40,6 +40,7 @@ export type OrderDirectoryRow = {
   customerFirstName: string;
   customerLastName: string;
   searchBlob: string;
+  createdBy: string;
 };
 
 const filters: { label: string; value: SalesOrderStatus | null }[] = [
@@ -187,6 +188,7 @@ export function OrdersDirectory({
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Customer</TableHead>
+                  <TableHead className="hidden xl:table-cell">Created by</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Remaining</TableHead>
                   <TableHead>Status</TableHead>
@@ -197,7 +199,7 @@ export function OrdersDirectory({
                 {rows.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="text-center text-zinc-500"
                     >
                       No orders yet.
@@ -206,7 +208,7 @@ export function OrdersDirectory({
                 ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="text-center text-zinc-500"
                     >
                       {emptyOrdersMessage(
@@ -221,7 +223,12 @@ export function OrdersDirectory({
                   filtered.map((o) => (
                     <TableRow key={o.id}>
                       <TableCell className="whitespace-nowrap text-zinc-600">
-                        {formatDate(new Date(o.createdAt))}
+                        <div>{formatDate(new Date(o.createdAt))}</div>
+                        {o.createdBy ? (
+                          <p className="mt-0.5 text-xs font-normal text-zinc-500 xl:hidden">
+                            By {o.createdBy}
+                          </p>
+                        ) : null}
                       </TableCell>
                       <TableCell>
                         <Link
@@ -232,6 +239,9 @@ export function OrdersDirectory({
                             ? `${o.customerFirstName} ${o.customerLastName}`.trim()
                             : "Unknown customer"}
                         </Link>
+                      </TableCell>
+                      <TableCell className="hidden text-sm text-zinc-600 xl:table-cell">
+                        {o.createdBy || "—"}
                       </TableCell>
                       <TableCell className="tabular-nums">
                         {formatMinorAsCurrency(o.totalAmount)}

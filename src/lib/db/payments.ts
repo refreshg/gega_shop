@@ -12,6 +12,7 @@ export async function appendPayment(input: {
   amountPaidMinor: number;
   method: string;
   paymentDate: Date;
+  processedBy: string;
 }): Promise<void> {
   const doc = await getReadySpreadsheet();
   const sheet = doc.sheetsByTitle[SHEETS.payments];
@@ -21,6 +22,7 @@ export async function appendPayment(input: {
     amountPaid: String(input.amountPaidMinor),
     paymentDate: input.paymentDate.toISOString(),
     method: input.method,
+    processedBy: input.processedBy,
   });
 }
 
@@ -32,6 +34,7 @@ export async function addPaymentAndUpdateStatus(input: {
   amountPaidMinor: number;
   method: string;
   paymentDate: Date;
+  processedBy: string;
 }): Promise<void> {
   const order = await getSalesOrderById(input.orderId);
   if (!order) throw new Error("Order not found");
@@ -52,6 +55,7 @@ export async function addPaymentAndUpdateStatus(input: {
     amountPaidMinor: input.amountPaidMinor,
     method: input.method,
     paymentDate: input.paymentDate,
+    processedBy: input.processedBy,
   });
 
   const newPaid = paid + input.amountPaidMinor;

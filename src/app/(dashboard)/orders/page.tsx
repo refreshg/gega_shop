@@ -102,6 +102,7 @@ export default async function OrdersPage({
         customerFirstName: cust?.firstName ?? "",
         customerLastName: cust?.lastName ?? "",
         searchBlob,
+        createdBy: o.createdBy,
       };
     });
   } catch (e) {

@@ -29,6 +29,7 @@ function rowToSalesOrder(row: GoogleSpreadsheetRow): SalesOrder {
     paymentTerms: String(row.get("paymentTerms") ?? ""),
     isConsignment: parseBool(row.get("isConsignment")),
     createdAt: parseDate(String(row.get("createdAt") ?? "")),
+    createdBy: String(row.get("createdBy") ?? "").trim(),
   };
 }
 
@@ -102,6 +103,7 @@ function rowToPayment(row: GoogleSpreadsheetRow): Payment {
     amountPaidMinor: parseIntSafe(row.get("amountPaid")),
     paymentDate: parseDate(String(row.get("paymentDate") ?? "")),
     method: String(row.get("method") ?? "").trim() || "Unknown",
+    processedBy: String(row.get("processedBy") ?? "").trim(),
   };
 }
 
@@ -223,6 +225,9 @@ export type CreateOrderInput = {
     description: string;
   }>;
   initialPayment?: { amountMinor: number; method: string; paymentDate: Date };
+  /** Display name of the logged-in user for sheet columns */
+  createdBy: string;
+  processedBy: string;
 };
 
 /**
@@ -249,6 +254,7 @@ export async function createOrderSequential(
       paymentTerms: input.paymentTerms,
       createdAt,
       isConsignment: input.isConsignment ? "TRUE" : "FALSE",
+      createdBy: input.createdBy,
     });
   } catch (e) {
     console.error(e);
@@ -282,6 +288,7 @@ export async function createOrderSequential(
         amountPaid: String(input.initialPayment.amountMinor),
         paymentDate: input.initialPayment.paymentDate.toISOString(),
         method: input.initialPayment.method,
+        processedBy: input.processedBy,
       });
     } catch (e) {
       console.error(e);

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+
+import { requireSession } from "@/lib/auth/require";
 import {
   appendCustomer,
   deleteCustomerRow,
@@ -50,12 +52,16 @@ export async function createCustomer(
     }
     return { fieldErrors: fe };
   }
+  const session = await requireSession();
   try {
     const existing = await findCustomerByPersonalId(parsed.data.personalId);
     if (existing) {
       return { error: "Personal ID is already registered." };
     }
-    const created = await appendCustomer(parsed.data);
+    const created = await appendCustomer({
+      ...parsed.data,
+      createdBy: session.name,
+    });
     invalidateSheetDbCache();
     revalidatePath("/customers");
     revalidatePath("/orders/new");
@@ -90,6 +96,7 @@ export async function updateCustomer(
     }
     return { fieldErrors: fe };
   }
+  await requireSession();
   try {
     const other = await findCustomerByPersonalId(parsed.data.personalId);
     if (other && other.id !== customerId) {
@@ -108,6 +115,7 @@ export async function updateCustomer(
 export type DeleteCustomerResult = { ok: true } | { ok: false; message: string };
 
 export async function deleteCustomer(customerId: string): Promise<DeleteCustomerResult> {
+  await requireSession();
   const orders = (await listSalesOrders()).filter((o) => o.customerId === customerId);
   const payments = await listPayments();
   const hasOutstanding = orders.some((o) => {
