@@ -164,6 +164,39 @@ export async function getOrderDetail(orderId: string): Promise<OrderDetail | nul
   };
 }
 
+/**
+ * Deletes order line items and payments for this order, then the sales order row.
+ */
+export async function deleteSalesOrderCascade(orderId: string): Promise<void> {
+  const doc = await getReadySpreadsheet();
+  const itemsSheet = doc.sheetsByTitle[SHEETS.orderItems];
+  const paySheet = doc.sheetsByTitle[SHEETS.payments];
+  const orderSheet = doc.sheetsByTitle[SHEETS.salesOrders];
+
+  const itemRows = await itemsSheet.getRows();
+  const itemsToDelete = itemRows.filter(
+    (r) => String(r.get("orderId") ?? "").trim() === orderId,
+  );
+  for (const row of itemsToDelete) {
+    await row.delete();
+  }
+
+  const payRows = await paySheet.getRows();
+  const paysToDelete = payRows.filter(
+    (r) => String(r.get("orderId") ?? "").trim() === orderId,
+  );
+  for (const row of paysToDelete) {
+    await row.delete();
+  }
+
+  const orderRows = await orderSheet.getRows();
+  const orderRow = orderRows.find(
+    (r) => String(r.get("id") ?? "").trim() === orderId,
+  );
+  if (!orderRow) throw new Error("Order not found");
+  await orderRow.delete();
+}
+
 export async function updateSalesOrderStatus(
   orderId: string,
   status: SalesOrderStatus,

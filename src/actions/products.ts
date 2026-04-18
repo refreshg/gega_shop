@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { invalidateSheetDbCache } from "@/lib/db/invalidate";
-import { appendProduct } from "@/lib/db/products";
+import { appendProduct, deleteProductRow } from "@/lib/db/products";
+import { listOrderItems } from "@/lib/db/sales-orders";
 import { parseMoneyToMinor } from "@/lib/money";
 
 const productSchema = z.object({
@@ -55,5 +56,31 @@ export async function createProduct(
     return { success: true };
   } catch {
     return { error: "Could not save product." };
+  }
+}
+
+export type DeleteProductResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+export async function deleteProduct(
+  productId: string,
+): Promise<DeleteProductResult> {
+  const items = await listOrderItems();
+  if (items.some((i) => i.productId === productId)) {
+    return {
+      ok: false,
+      message:
+        "This product is referenced on one or more order lines. Remove or change those lines first.",
+    };
+  }
+  try {
+    await deleteProductRow(productId);
+    invalidateSheetDbCache();
+    revalidatePath("/products");
+    revalidatePath("/orders/new");
+    return { ok: true };
+  } catch {
+    return { ok: false, message: "Could not delete product." };
   }
 }

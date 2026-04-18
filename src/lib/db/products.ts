@@ -56,3 +56,12 @@ export async function appendProduct(
   });
   return { ...data, id };
 }
+
+export async function deleteProductRow(id: string): Promise<void> {
+  const doc = await getReadySpreadsheet();
+  const sheet = doc.sheetsByTitle[SHEETS.products];
+  const rows = await sheet.getRows();
+  const row = rows.find((r) => String(r.get("id") ?? "").trim() === id);
+  if (!row) throw new Error("Product not found");
+  await row.delete();
+}

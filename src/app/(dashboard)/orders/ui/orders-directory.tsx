@@ -23,6 +23,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { deleteOrder } from "@/actions/orders";
+import { DeleteRowButton } from "@/components/features/delete-row-button";
 import { timestampInLocalDayRange } from "@/lib/date-filters";
 import { formatMinorAsCurrency } from "@/lib/money";
 import { formatDate } from "@/lib/utils";
@@ -241,9 +243,16 @@ export function OrdersDirectory({
                         <OrderStatusBadge status={o.status} />
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button asChild size="sm" variant="outline">
-                          <Link href={`/orders/${o.id}`}>View</Link>
-                        </Button>
+                        <div className="inline-flex items-center justify-end gap-1">
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/orders/${o.id}`}>View</Link>
+                          </Button>
+                          <DeleteRowButton
+                            id={o.id}
+                            entity="Order"
+                            deleteAction={deleteOrder}
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

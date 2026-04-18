@@ -22,6 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { deleteCustomer } from "@/actions/customers";
+import { DeleteRowButton } from "@/components/features/delete-row-button";
 import { timestampInLocalDayRange } from "@/lib/date-filters";
 import { formatDate } from "@/lib/utils";
 
@@ -196,9 +198,16 @@ export function CustomersDirectory({
                       {formatDate(new Date(c.createdAt))}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={`/customers/${c.id}`}>View</Link>
-                      </Button>
+                      <div className="inline-flex items-center justify-end gap-1">
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/customers/${c.id}`}>View</Link>
+                        </Button>
+                        <DeleteRowButton
+                          id={c.id}
+                          entity="Customer"
+                          deleteAction={deleteCustomer}
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

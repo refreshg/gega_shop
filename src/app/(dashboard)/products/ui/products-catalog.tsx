@@ -19,6 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { deleteProduct } from "@/actions/products";
+import { DeleteRowButton } from "@/components/features/delete-row-button";
 import { formatMinorAsCurrency } from "@/lib/money";
 
 export type ProductListItem = {
@@ -81,13 +83,13 @@ export function ProductsCatalog({ products }: { products: ProductListItem[] }) {
             <TableBody>
               {products.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-zinc-500">
+                  <TableCell colSpan={4} className="text-center text-zinc-500">
                     No products yet.
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-zinc-500">
+                  <TableCell colSpan={4} className="text-center text-zinc-500">
                     No results found for &quot;{query.trim()}&quot;
                   </TableCell>
                 </TableRow>
@@ -102,6 +104,15 @@ export function ProductsCatalog({ products }: { products: ProductListItem[] }) {
                       {p.priceMinor != null
                         ? formatMinorAsCurrency(p.priceMinor)
                         : "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="inline-flex items-center justify-end">
+                        <DeleteRowButton
+                          id={p.id}
+                          entity="Product"
+                          deleteAction={deleteProduct}
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

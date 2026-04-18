@@ -9,6 +9,7 @@ import {
   updateCustomerRow,
 } from "@/lib/db/customers";
 import { invalidateSheetDbCache } from "@/lib/db/invalidate";
+import { listPayments, listSalesOrders } from "@/lib/db/sales-orders";
 import { remainingDebtMinor } from "@/lib/money";
 
 const customerSchema = z.object({
@@ -107,7 +108,6 @@ export async function updateCustomer(
 export type DeleteCustomerResult = { ok: true } | { ok: false; message: string };
 
 export async function deleteCustomer(customerId: string): Promise<DeleteCustomerResult> {
-  const { listSalesOrders, listPayments } = await import("@/lib/db/sales-orders");
   const orders = (await listSalesOrders()).filter((o) => o.customerId === customerId);
   const payments = await listPayments();
   const hasOutstanding = orders.some((o) => {
@@ -132,6 +132,8 @@ export async function deleteCustomer(customerId: string): Promise<DeleteCustomer
     await deleteCustomerRow(customerId);
     invalidateSheetDbCache();
     revalidatePath("/customers");
+    revalidatePath("/");
+    revalidatePath("/orders");
     return { ok: true };
   } catch {
     return {

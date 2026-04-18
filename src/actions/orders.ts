@@ -5,7 +5,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { listCustomersCached } from "@/lib/db/customers";
 import { invalidateSheetDbCache } from "@/lib/db/invalidate";
-import { createOrderSequential } from "@/lib/db/sales-orders";
+import {
+  createOrderSequential,
+  deleteSalesOrderCascade,
+  getSalesOrderById,
+} from "@/lib/db/sales-orders";
 import { lineTotalMinor, parseMoneyToMinor } from "@/lib/money";
 import { computeInitialStatus } from "@/lib/order-status";
 
@@ -130,6 +134,28 @@ export async function createSalesOrder(formData: FormData): Promise<CreateOrderR
     const msg =
       e instanceof Error ? e.message : "Could not create order in Google Sheets.";
     return { ok: false, error: msg };
+  }
+}
+
+export type DeleteOrderResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+export async function deleteOrder(orderId: string): Promise<DeleteOrderResult> {
+  const order = await getSalesOrderById(orderId);
+  if (!order) {
+    return { ok: false, message: "Order not found." };
+  }
+  try {
+    await deleteSalesOrderCascade(orderId);
+    invalidateSheetDbCache();
+    revalidatePath("/orders");
+    revalidatePath("/");
+    revalidatePath(`/customers/${order.customerId}`);
+    revalidatePath(`/orders/${orderId}`);
+    return { ok: true };
+  } catch {
+    return { ok: false, message: "Could not delete order." };
   }
 }
 
