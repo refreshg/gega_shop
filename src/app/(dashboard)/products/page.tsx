@@ -7,18 +7,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { listProductsCached } from "@/lib/db/products";
 import { hasGoogleCredentialsConfigured } from "@/lib/googleSheets";
-import { formatMinorAsCurrency } from "@/lib/money";
 import { ProductCreateForm } from "./ui/product-create-form";
+import { ProductsCatalog } from "./ui/products-catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +20,12 @@ export default async function ProductsPage() {
   }
 
   const products = await listProductsCached();
+  const productItems = products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    priceMinor: p.priceMinor,
+  }));
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8">
@@ -50,46 +48,7 @@ export default async function ProductsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Catalog</CardTitle>
-          <CardDescription>{products.length} products</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Default price</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {products.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center text-zinc-500">
-                    No products yet.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                products.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell className="max-w-xs truncate text-zinc-600">
-                      {p.description ?? "—"}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {p.priceMinor != null
-                        ? formatMinorAsCurrency(p.priceMinor)
-                        : "—"}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <ProductsCatalog products={productItems} />
     </div>
   );
 }

@@ -66,6 +66,12 @@ export async function listOrderItems(): Promise<OrderLineItem[]> {
   return rows.map(rowToOrderItem).filter((r) => r.id);
 }
 
+export const listOrderItemsCached = unstable_cache(
+  async () => listOrderItems(),
+  ["sheet-list-order-items"],
+  { revalidate: 30, tags: ["sheet-db"] },
+);
+
 export async function listOrderItemsByOrderId(
   orderId: string,
 ): Promise<OrderLineItem[]> {
