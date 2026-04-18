@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type {
   GoogleSpreadsheet,
   GoogleSpreadsheetWorksheet,
@@ -61,6 +63,29 @@ export const HEADERS: Record<string, readonly string[]> = {
 
 let ensured = false;
 
+/** First-time login: written to the Users sheet when it has no accounts yet. */
+const DEFAULT_ADMIN_USER = {
+  name: "Admin",
+  pin: "3377",
+  role: "admin",
+} as const;
+
+async function seedDefaultAdminUser(doc: GoogleSpreadsheet): Promise<void> {
+  const sheet = doc.sheetsByTitle[SHEETS.users];
+  if (!sheet) return;
+  const rows = await sheet.getRows();
+  const hasAnyUser = rows.some(
+    (r) => String(r.get("id") ?? "").trim() !== "",
+  );
+  if (hasAnyUser) return;
+  await sheet.addRow({
+    id: randomUUID(),
+    name: DEFAULT_ADMIN_USER.name,
+    pin: DEFAULT_ADMIN_USER.pin,
+    role: DEFAULT_ADMIN_USER.role,
+  });
+}
+
 /** Appends missing header cells so existing spreadsheets gain new columns safely. */
 export async function extendWorksheetHeaders(
   sheet: GoogleSpreadsheetWorksheet,
@@ -108,6 +133,8 @@ export async function ensureWorksheets(doc: GoogleSpreadsheet): Promise<void> {
     const sheet = doc.sheetsByTitle[title];
     if (sheet) await sheet.loadHeaderRow(1);
   }
+  await seedDefaultAdminUser(doc);
+  await doc.loadInfo();
   ensured = true;
 }
 
