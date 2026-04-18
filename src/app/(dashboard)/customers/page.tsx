@@ -1,4 +1,5 @@
 import { GoogleCredentialsMissing } from "@/components/features/google-credentials-missing";
+import { SheetLoadError } from "@/components/features/sheet-load-error";
 import {
   Card,
   CardContent,
@@ -13,20 +14,35 @@ import { CustomersDirectory } from "./ui/customers-directory";
 
 export const dynamic = "force-dynamic";
 
+function toIsoSafe(d: Date): string {
+  const t = d.getTime();
+  return Number.isNaN(t) ? new Date(0).toISOString() : d.toISOString();
+}
+
 export default async function CustomersPage() {
   if (!hasGoogleCredentialsConfigured()) {
     return <GoogleCredentialsMissing />;
   }
 
-  const customers = await listCustomersCached();
-  const customerItems = customers.map((c) => ({
-    id: c.id,
-    firstName: c.firstName,
-    lastName: c.lastName,
-    phone: c.phone,
-    personalId: c.personalId,
-    createdAt: c.createdAt.toISOString(),
-  }));
+  let customerItems;
+  try {
+    const customers = await listCustomersCached();
+    customerItems = customers.map((c) => ({
+      id: c.id,
+      firstName: c.firstName,
+      lastName: c.lastName,
+      phone: c.phone,
+      personalId: c.personalId,
+      createdAt: toIsoSafe(c.createdAt),
+    }));
+  } catch (e) {
+    return (
+      <SheetLoadError
+        title="Could not load customers"
+        error={e}
+      />
+    );
+  }
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8">

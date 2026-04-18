@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -22,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { timestampInLocalDayRange } from "@/lib/date-filters";
 import { formatMinorAsCurrency } from "@/lib/money";
 import { formatDate } from "@/lib/utils";
 import type { SalesOrderStatus } from "@/types";
@@ -35,7 +37,6 @@ export type OrderDirectoryRow = {
   customerId: string;
   customerFirstName: string;
   customerLastName: string;
-  /** Lowercase haystack: id, status, labels, customer, line products/descriptions */
   searchBlob: string;
 };
 
@@ -47,6 +48,20 @@ const filters: { label: string; value: SalesOrderStatus | null }[] = [
   { label: "Paid", value: "PAID" },
 ];
 
+function emptyOrdersMessage(
+  query: string,
+  dateFrom: string,
+  dateTo: string,
+  statusFilter: SalesOrderStatus | null,
+): string {
+  const has =
+    query.trim().length > 0 ||
+    Boolean(dateFrom || dateTo) ||
+    statusFilter != null;
+  if (has) return "No orders match your filters.";
+  return "No orders yet.";
+}
+
 export function OrdersDirectory({
   rows,
   initialStatusFilter,
@@ -55,6 +70,8 @@ export function OrdersDirectory({
   initialStatusFilter: SalesOrderStatus | null;
 }) {
   const [query, setQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [statusFilter, setStatusFilter] = useState<SalesOrderStatus | null>(
     initialStatusFilter,
   );
@@ -63,10 +80,16 @@ export function OrdersDirectory({
     const q = query.trim().toLowerCase();
     return rows.filter((r) => {
       if (statusFilter && r.status !== statusFilter) return false;
+      if (!timestampInLocalDayRange(r.createdAt, dateFrom, dateTo)) return false;
       if (!q) return true;
       return r.searchBlob.includes(q);
     });
-  }, [rows, query, statusFilter]);
+  }, [rows, query, dateFrom, dateTo, statusFilter]);
+
+  const hasActiveFilters =
+    query.trim().length > 0 ||
+    Boolean(dateFrom || dateTo) ||
+    statusFilter != null;
 
   return (
     <>
@@ -93,25 +116,67 @@ export function OrdersDirectory({
         <CardHeader>
           <CardTitle>Orders</CardTitle>
           <CardDescription>
-            {query.trim()
+            {hasActiveFilters
               ? `${filtered.length} of ${rows.length} orders match`
               : `${filtered.length} orders in this view`}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="relative w-full max-w-md">
-            <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
-              aria-hidden
-            />
-            <Input
-              type="search"
-              placeholder="Search by customer, order ID, status, or product…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="pl-9"
-              aria-label="Search orders"
-            />
+          <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
+            <div className="relative w-full min-w-0 max-w-md flex-1">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
+                aria-hidden
+              />
+              <Input
+                type="search"
+                placeholder="Search by customer, order ID, status, or product…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="pl-9"
+                aria-label="Search orders"
+              />
+            </div>
+            <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <div className="grid w-full min-w-[9rem] max-w-[11rem] gap-1.5">
+                <Label htmlFor="orders-date-from" className="text-xs">
+                  From (order date)
+                </Label>
+                <Input
+                  id="orders-date-from"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div className="grid w-full min-w-[9rem] max-w-[11rem] gap-1.5">
+                <Label htmlFor="orders-date-to" className="text-xs">
+                  To
+                </Label>
+                <Input
+                  id="orders-date-to"
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              {dateFrom || dateTo ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 self-end sm:mb-0.5"
+                  onClick={() => {
+                    setDateFrom("");
+                    setDateTo("");
+                  }}
+                >
+                  Clear dates
+                </Button>
+              ) : null}
+            </div>
           </div>
 
           <div className="overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800">
@@ -142,9 +207,12 @@ export function OrdersDirectory({
                       colSpan={6}
                       className="text-center text-zinc-500"
                     >
-                      {query.trim()
-                        ? `No results found for "${query.trim()}"`
-                        : "No orders match this filter."}
+                      {emptyOrdersMessage(
+                        query,
+                        dateFrom,
+                        dateTo,
+                        statusFilter,
+                      )}
                     </TableCell>
                   </TableRow>
                 ) : (

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { GoogleCredentialsMissing } from "@/components/features/google-credentials-missing";
+import { SheetLoadError } from "@/components/features/sheet-load-error";
 import { Button } from "@/components/ui/button";
 import { listCustomersCached } from "@/lib/db/customers";
 import { listProductsCached } from "@/lib/db/products";
@@ -40,61 +41,77 @@ export default async function OrdersPage({
       ? (statusParam as SalesOrderStatus)
       : null;
 
-  const [orders, customers, payments, orderItems, products] = await Promise.all([
-    listSalesOrdersCached(),
-    listCustomersCached(),
-    listPaymentsCached(),
-    listOrderItemsCached(),
-    listProductsCached(),
-  ]);
+  let rows;
+  try {
+    const [orders, customers, payments, orderItems, products] =
+      await Promise.all([
+        listSalesOrdersCached(),
+        listCustomersCached(),
+        listPaymentsCached(),
+        listOrderItemsCached(),
+        listProductsCached(),
+      ]);
 
-  const customerById = Object.fromEntries(customers.map((c) => [c.id, c]));
-  const productById = Object.fromEntries(products.map((p) => [p.id, p]));
+    const customerById = Object.fromEntries(customers.map((c) => [c.id, c]));
+    const productById = Object.fromEntries(products.map((p) => [p.id, p]));
 
-  const itemsByOrderId = new Map<string, typeof orderItems>();
-  for (const item of orderItems) {
-    const list = itemsByOrderId.get(item.orderId);
-    if (list) list.push(item);
-    else itemsByOrderId.set(item.orderId, [item]);
-  }
-
-  const rows = orders.map((o) => {
-    const ps = payments.filter((p) => p.orderId === o.id);
-    const remaining = remainingDebtMinor(o.totalAmount, ps);
-    const cust = customerById[o.customerId];
-    const items = itemsByOrderId.get(o.id) ?? [];
-    const productParts: string[] = [];
-    for (const li of items) {
-      if (li.productId && productById[li.productId]) {
-        productParts.push(productById[li.productId].name);
-      }
-      if (li.description) productParts.push(li.description);
+    const itemsByOrderId = new Map<string, typeof orderItems>();
+    for (const item of orderItems) {
+      const list = itemsByOrderId.get(item.orderId);
+      if (list) list.push(item);
+      else itemsByOrderId.set(item.orderId, [item]);
     }
-    const searchBlob = [
-      o.id,
-      o.status,
-      statusLabel(o.status),
-      cust?.firstName ?? "",
-      cust?.lastName ?? "",
-      cust ? `${cust.firstName} ${cust.lastName}` : "",
-      ...productParts,
-      o.isConsignment ? "consignment" : "",
-    ]
-      .join(" ")
-      .toLowerCase();
 
-    return {
-      id: o.id,
-      createdAt: o.createdAt.toISOString(),
-      status: o.status,
-      totalAmount: o.totalAmount,
-      remaining,
-      customerId: o.customerId,
-      customerFirstName: cust?.firstName ?? "",
-      customerLastName: cust?.lastName ?? "",
-      searchBlob,
-    };
-  });
+    rows = orders.map((o) => {
+      const ps = payments.filter((p) => p.orderId === o.id);
+      const remaining = remainingDebtMinor(o.totalAmount, ps);
+      const cust = customerById[o.customerId];
+      const items = itemsByOrderId.get(o.id) ?? [];
+      const productParts: string[] = [];
+      for (const li of items) {
+        if (li.productId && productById[li.productId]) {
+          productParts.push(productById[li.productId].name);
+        }
+        if (li.description) productParts.push(li.description);
+      }
+      const searchBlob = [
+        o.id,
+        o.status,
+        statusLabel(o.status),
+        cust?.firstName ?? "",
+        cust?.lastName ?? "",
+        cust ? `${cust.firstName} ${cust.lastName}` : "",
+        ...productParts,
+        o.isConsignment ? "consignment" : "",
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      const t = o.createdAt.getTime();
+      const createdAtIso = Number.isNaN(t)
+        ? new Date(0).toISOString()
+        : o.createdAt.toISOString();
+
+      return {
+        id: o.id,
+        createdAt: createdAtIso,
+        status: o.status,
+        totalAmount: o.totalAmount,
+        remaining,
+        customerId: o.customerId,
+        customerFirstName: cust?.firstName ?? "",
+        customerLastName: cust?.lastName ?? "",
+        searchBlob,
+      };
+    });
+  } catch (e) {
+    return (
+      <SheetLoadError
+        title="Could not load sales orders"
+        error={e}
+      />
+    );
+  }
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">

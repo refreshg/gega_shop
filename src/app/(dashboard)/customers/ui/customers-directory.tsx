@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -21,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { timestampInLocalDayRange } from "@/lib/date-filters";
 import { formatDate } from "@/lib/utils";
 
 export type CustomerListItem = {
@@ -43,17 +45,45 @@ function matchesCustomerQuery(c: CustomerListItem, q: string): boolean {
   );
 }
 
+function emptyDirectoryMessage(
+  query: string,
+  dateFrom: string,
+  dateTo: string,
+): string {
+  const hasSearch = query.trim().length > 0;
+  const hasDate = Boolean(dateFrom || dateTo);
+  if (hasSearch && hasDate) {
+    return "No contacts match your search and date range.";
+  }
+  if (hasSearch) {
+    return `No results found for "${query.trim()}"`;
+  }
+  if (hasDate) {
+    return "No contacts in this date range.";
+  }
+  return "No results match your filters.";
+}
+
 export function CustomersDirectory({
   customers,
 }: {
   customers: CustomerListItem[];
 }) {
   const [query, setQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const filtered = useMemo(
-    () => customers.filter((c) => matchesCustomerQuery(c, query)),
-    [customers, query],
+    () =>
+      customers.filter((c) => {
+        if (!matchesCustomerQuery(c, query)) return false;
+        return timestampInLocalDayRange(c.createdAt, dateFrom, dateTo);
+      }),
+    [customers, query, dateFrom, dateTo],
   );
+
+  const hasActiveFilters =
+    query.trim().length > 0 || Boolean(dateFrom || dateTo);
 
   return (
     <Card>
@@ -61,9 +91,9 @@ export function CustomersDirectory({
         <div>
           <CardTitle>Directory</CardTitle>
           <CardDescription>
-            {query.trim()
-              ? `${filtered.length} of ${customers.length} customers`
-              : `${customers.length} customers`}
+            {hasActiveFilters
+              ? `${filtered.length} of ${customers.length} contacts`
+              : `${customers.length} contacts`}
           </CardDescription>
         </div>
         <Button asChild variant="outline" size="sm" className="shrink-0">
@@ -71,19 +101,61 @@ export function CustomersDirectory({
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="relative w-full max-w-md">
-          <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
-            aria-hidden
-          />
-          <Input
-            type="search"
-            placeholder="Search by name, phone, or personal ID…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="pl-9"
-            aria-label="Search customers"
-          />
+        <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
+          <div className="relative w-full min-w-0 max-w-md flex-1">
+            <Search
+              className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
+              aria-hidden
+            />
+            <Input
+              type="search"
+              placeholder="Search by name, phone, or personal ID…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="pl-9"
+              aria-label="Search customers"
+            />
+          </div>
+          <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="grid w-full min-w-[9rem] max-w-[11rem] gap-1.5">
+              <Label htmlFor="customers-date-from" className="text-xs">
+                From (added)
+              </Label>
+              <Input
+                id="customers-date-from"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="grid w-full min-w-[9rem] max-w-[11rem] gap-1.5">
+              <Label htmlFor="customers-date-to" className="text-xs">
+                To
+              </Label>
+              <Input
+                id="customers-date-to"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            {dateFrom || dateTo ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="shrink-0 self-end sm:mb-0.5"
+                onClick={() => {
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+              >
+                Clear dates
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800">
@@ -107,7 +179,7 @@ export function CustomersDirectory({
               ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-zinc-500">
-                    No results found for &quot;{query.trim()}&quot;
+                    {emptyDirectoryMessage(query, dateFrom, dateTo)}
                   </TableCell>
                 </TableRow>
               ) : (
