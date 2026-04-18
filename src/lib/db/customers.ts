@@ -2,7 +2,7 @@ import type { GoogleSpreadsheetRow } from "google-spreadsheet";
 import { unstable_cache } from "next/cache";
 
 import { getReadySpreadsheet, SHEETS } from "@/lib/db/sheet-config";
-import { parseDate } from "@/lib/db/parse";
+import { coerceDate, parseDate } from "@/lib/db/parse";
 import type { Customer } from "@/types";
 
 function rowToCustomer(row: GoogleSpreadsheetRow): Customer {
@@ -26,11 +26,20 @@ export async function listCustomers(): Promise<Customer[]> {
     .sort((a, b) => a.lastName.localeCompare(b.lastName));
 }
 
-export const listCustomersCached = unstable_cache(
+const loadCustomersCached = unstable_cache(
   async () => listCustomers(),
   ["sheet-list-customers"],
   { revalidate: 45, tags: ["sheet-db"] },
 );
+
+/** Cached read; revives `createdAt` after JSON round-trip from `unstable_cache`. */
+export async function listCustomersCached(): Promise<Customer[]> {
+  const rows = await loadCustomersCached();
+  return rows.map((c) => ({
+    ...c,
+    createdAt: coerceDate(c.createdAt),
+  }));
+}
 
 export async function getCustomerById(id: string): Promise<Customer | null> {
   const customers = await listCustomers();

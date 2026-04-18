@@ -5,6 +5,7 @@ import { listCustomersCached } from "@/lib/db/customers";
 import { listProductsCached } from "@/lib/db/products";
 import { getReadySpreadsheet, SHEETS } from "@/lib/db/sheet-config";
 import {
+  coerceDate,
   parseBool,
   parseDate,
   parseIntSafe,
@@ -53,11 +54,19 @@ export async function listSalesOrders(): Promise<SalesOrder[]> {
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
-export const listSalesOrdersCached = unstable_cache(
+const loadSalesOrdersCached = unstable_cache(
   async () => listSalesOrders(),
   ["sheet-list-sales-orders"],
   { revalidate: 30, tags: ["sheet-db"] },
 );
+
+export async function listSalesOrdersCached(): Promise<SalesOrder[]> {
+  const rows = await loadSalesOrdersCached();
+  return rows.map((o) => ({
+    ...o,
+    createdAt: coerceDate(o.createdAt),
+  }));
+}
 
 export async function listOrderItems(): Promise<OrderLineItem[]> {
   const doc = await getReadySpreadsheet();
@@ -103,11 +112,19 @@ export async function listPayments(): Promise<Payment[]> {
   return rows.map(rowToPayment).filter((p) => p.id);
 }
 
-export const listPaymentsCached = unstable_cache(
+const loadPaymentsCached = unstable_cache(
   async () => listPayments(),
   ["sheet-list-payments"],
   { revalidate: 30, tags: ["sheet-db"] },
 );
+
+export async function listPaymentsCached(): Promise<Payment[]> {
+  const rows = await loadPaymentsCached();
+  return rows.map((p) => ({
+    ...p,
+    paymentDate: coerceDate(p.paymentDate),
+  }));
+}
 
 export async function listPaymentsByOrderId(orderId: string): Promise<Payment[]> {
   const all = await listPayments();

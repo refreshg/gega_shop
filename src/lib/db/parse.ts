@@ -20,6 +20,21 @@ export function parseDate(v: string | undefined | null): Date {
   return Number.isNaN(d.getTime()) ? new Date() : d;
 }
 
+/**
+ * `unstable_cache` serializes results as JSON, so `Date` fields become strings.
+ * Use this when reading cached rows so `.getTime()` and `instanceof Date` work.
+ */
+export function coerceDate(value: unknown): Date {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? new Date() : d;
+  }
+  return new Date();
+}
+
 const STATUS: SalesOrderStatus[] = [
   "PAID",
   "PARTIALLY_PAID",
