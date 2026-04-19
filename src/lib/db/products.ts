@@ -11,6 +11,12 @@ function rowToProduct(row: GoogleSpreadsheetRow): Product {
     priceRaw === "" || priceRaw === undefined || priceRaw === null
       ? null
       : parseIntSafe(priceRaw);
+  const stockRaw = row.get("stock");
+  const stock =
+    stockRaw === "" || stockRaw === undefined || stockRaw === null
+      ? 0
+      : parseIntSafe(stockRaw);
+
   return {
     id: String(row.get("id") ?? "").trim(),
     name: String(row.get("name") ?? "").trim(),
@@ -20,6 +26,7 @@ function rowToProduct(row: GoogleSpreadsheetRow): Product {
       return String(d);
     })(),
     priceMinor,
+    stock,
     createdBy: String(row.get("createdBy") ?? "").trim(),
   };
 }
@@ -54,6 +61,7 @@ export async function appendProduct(
       data.priceMinor === null || data.priceMinor === undefined
         ? ""
         : String(data.priceMinor),
+    stock: String(data.stock ?? 0),
     createdBy: data.createdBy,
   });
   return { ...data, id };

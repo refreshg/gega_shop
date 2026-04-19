@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  DATA_TABLE_PAGE_SIZE,
+  DataTablePagination,
+} from "@/components/features/data-table-pagination";
+import { SortableTableHead } from "@/components/features/sortable-table-head";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -37,6 +42,17 @@ export type CustomerListItem = {
   /** Who created the row (from sheet `createdBy`). */
   createdBy: string;
 };
+
+type CustomerSortKey = "name" | "created";
+
+const DEFAULT_SORT: Record<CustomerSortKey, "asc" | "desc"> = {
+  name: "asc",
+  created: "desc",
+};
+
+function customerFullName(c: CustomerListItem): string {
+  return `${c.firstName} ${c.lastName}`.trim();
+}
 
 function matchesCustomerQuery(c: CustomerListItem, q: string): boolean {
   if (!q.trim()) return true;
@@ -76,6 +92,11 @@ export function CustomersDirectory({
   const [query, setQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<CustomerSortKey>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(
+    DEFAULT_SORT.name,
+  );
 
   const filtered = useMemo(
     () =>
@@ -85,6 +106,51 @@ export function CustomersDirectory({
       }),
     [customers, query, dateFrom, dateTo],
   );
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "name") {
+        cmp = customerFullName(a).localeCompare(customerFullName(b), undefined, {
+          sensitivity: "base",
+        });
+      } else {
+        cmp =
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return arr;
+  }, [filtered, sortKey, sortDir]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sorted.length / DATA_TABLE_PAGE_SIZE),
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
+
+  useEffect(() => {
+    setPage((p) => Math.min(p, totalPages));
+  }, [totalPages]);
+
+  const safePage = Math.min(page, totalPages);
+  const paged = useMemo(() => {
+    const start = (safePage - 1) * DATA_TABLE_PAGE_SIZE;
+    return sorted.slice(start, start + DATA_TABLE_PAGE_SIZE);
+  }, [sorted, safePage]);
+
+  function handleSort(key: CustomerSortKey) {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir(DEFAULT_SORT[key]);
+    } else {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    }
+  }
 
   const hasActiveFilters =
     query.trim().length > 0 || Boolean(dateFrom || dateTo);
@@ -166,11 +232,21 @@ export function CustomersDirectory({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <SortableTableHead
+                  label="Name"
+                  isActive={sortKey === "name"}
+                  direction={sortKey === "name" ? sortDir : null}
+                  onSort={() => handleSort("name")}
+                />
                 <TableHead>Phone</TableHead>
                 <TableHead>Personal ID</TableHead>
                 <TableHead className="hidden lg:table-cell">Added by</TableHead>
-                <TableHead>Since</TableHead>
+                <SortableTableHead
+                  label="Since"
+                  isActive={sortKey === "created"}
+                  direction={sortKey === "created" ? sortDir : null}
+                  onSort={() => handleSort("created")}
+                />
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -188,7 +264,7 @@ export function CustomersDirectory({
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((c) => (
+                paged.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">
                       <div>{c.firstName} {c.lastName}</div>
@@ -226,6 +302,14 @@ export function CustomersDirectory({
             </TableBody>
           </Table>
         </div>
+
+        {customers.length > 0 && filtered.length > 0 ? (
+          <DataTablePagination
+            page={safePage}
+            totalItems={sorted.length}
+            onPageChange={setPage}
+          />
+        ) : null}
       </CardContent>
     </Card>
   );

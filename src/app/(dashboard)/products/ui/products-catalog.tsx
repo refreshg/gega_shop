@@ -1,8 +1,13 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import {
+  DATA_TABLE_PAGE_SIZE,
+  DataTablePagination,
+} from "@/components/features/data-table-pagination";
+import { SortableTableHead } from "@/components/features/sortable-table-head";
 import {
   Card,
   CardContent,
@@ -28,7 +33,16 @@ export type ProductListItem = {
   name: string;
   description: string | null;
   priceMinor: number | null;
+  stock: number;
   createdBy: string;
+};
+
+type ProductSortKey = "name" | "price" | "stock";
+
+const DEFAULT_SORT: Record<ProductSortKey, "asc" | "desc"> = {
+  name: "asc",
+  price: "asc",
+  stock: "desc",
 };
 
 function matchesProductQuery(p: ProductListItem, q: string): boolean {
@@ -38,13 +52,71 @@ function matchesProductQuery(p: ProductListItem, q: string): boolean {
   return p.name.toLowerCase().includes(s) || desc.includes(s);
 }
 
+function comparePrice(a: ProductListItem, b: ProductListItem): number {
+  const pa = a.priceMinor;
+  const pb = b.priceMinor;
+  if (pa == null && pb == null) return 0;
+  if (pa == null) return 1;
+  if (pb == null) return -1;
+  return pa - pb;
+}
+
 export function ProductsCatalog({ products }: { products: ProductListItem[] }) {
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<ProductSortKey>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(
+    DEFAULT_SORT.name,
+  );
 
   const filtered = useMemo(
     () => products.filter((p) => matchesProductQuery(p, query)),
     [products, query],
   );
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "name") {
+        cmp = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+      } else if (sortKey === "price") {
+        cmp = comparePrice(a, b);
+      } else {
+        cmp = a.stock - b.stock;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return arr;
+  }, [filtered, sortKey, sortDir]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sorted.length / DATA_TABLE_PAGE_SIZE),
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
+
+  useEffect(() => {
+    setPage((p) => Math.min(p, totalPages));
+  }, [totalPages]);
+
+  const safePage = Math.min(page, totalPages);
+  const paged = useMemo(() => {
+    const start = (safePage - 1) * DATA_TABLE_PAGE_SIZE;
+    return sorted.slice(start, start + DATA_TABLE_PAGE_SIZE);
+  }, [sorted, safePage]);
+
+  function handleSort(key: ProductSortKey) {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir(DEFAULT_SORT[key]);
+    } else {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    }
+  }
 
   return (
     <Card>
@@ -76,9 +148,25 @@ export function ProductsCatalog({ products }: { products: ProductListItem[] }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <SortableTableHead
+                  label="Name"
+                  isActive={sortKey === "name"}
+                  direction={sortKey === "name" ? sortDir : null}
+                  onSort={() => handleSort("name")}
+                />
                 <TableHead>Description</TableHead>
-                <TableHead>Default price</TableHead>
+                <SortableTableHead
+                  label="Default price"
+                  isActive={sortKey === "price"}
+                  direction={sortKey === "price" ? sortDir : null}
+                  onSort={() => handleSort("price")}
+                />
+                <SortableTableHead
+                  label="Stock"
+                  isActive={sortKey === "stock"}
+                  direction={sortKey === "stock" ? sortDir : null}
+                  onSort={() => handleSort("stock")}
+                />
                 <TableHead className="hidden md:table-cell">Added by</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -86,18 +174,18 @@ export function ProductsCatalog({ products }: { products: ProductListItem[] }) {
             <TableBody>
               {products.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-zinc-500">
+                  <TableCell colSpan={6} className="text-center text-zinc-500">
                     No products yet.
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-zinc-500">
+                  <TableCell colSpan={6} className="text-center text-zinc-500">
                     No results found for &quot;{query.trim()}&quot;
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((p) => (
+                paged.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">
                       <div>{p.name}</div>
@@ -115,6 +203,7 @@ export function ProductsCatalog({ products }: { products: ProductListItem[] }) {
                         ? formatMinorAsCurrency(p.priceMinor)
                         : "—"}
                     </TableCell>
+                    <TableCell className="tabular-nums">{p.stock}</TableCell>
                     <TableCell className="hidden text-sm text-zinc-600 md:table-cell">
                       {p.createdBy || "—"}
                     </TableCell>
@@ -133,6 +222,14 @@ export function ProductsCatalog({ products }: { products: ProductListItem[] }) {
             </TableBody>
           </Table>
         </div>
+
+        {products.length > 0 && filtered.length > 0 ? (
+          <DataTablePagination
+            page={safePage}
+            totalItems={sorted.length}
+            onPageChange={setPage}
+          />
+        ) : null}
       </CardContent>
     </Card>
   );

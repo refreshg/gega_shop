@@ -52,6 +52,7 @@ export async function createProduct(
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       priceMinor,
+      stock: 0,
       createdBy: session.name,
     });
     invalidateSheetDbCache();

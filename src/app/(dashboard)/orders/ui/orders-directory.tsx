@@ -2,8 +2,13 @@
 
 import Link from "next/link";
 import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import {
+  DATA_TABLE_PAGE_SIZE,
+  DataTablePagination,
+} from "@/components/features/data-table-pagination";
+import { SortableTableHead } from "@/components/features/sortable-table-head";
 import { OrderStatusBadge } from "@/components/features/order-status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +48,14 @@ export type OrderDirectoryRow = {
   createdBy: string;
 };
 
+type OrderSortKey = "date" | "total" | "customer";
+
+const DEFAULT_SORT: Record<OrderSortKey, "asc" | "desc"> = {
+  date: "desc",
+  total: "desc",
+  customer: "asc",
+};
+
 const filters: { label: string; value: SalesOrderStatus | null }[] = [
   { label: "All", value: null },
   { label: "Unpaid", value: "UNPAID" },
@@ -50,6 +63,11 @@ const filters: { label: string; value: SalesOrderStatus | null }[] = [
   { label: "Consignment", value: "CONSIGNMENT" },
   { label: "Paid", value: "PAID" },
 ];
+
+function customerSortName(r: OrderDirectoryRow): string {
+  const s = `${r.customerFirstName} ${r.customerLastName}`.trim();
+  return s || "Unknown customer";
+}
 
 function emptyOrdersMessage(
   query: string,
@@ -78,6 +96,9 @@ export function OrdersDirectory({
   const [statusFilter, setStatusFilter] = useState<SalesOrderStatus | null>(
     initialStatusFilter,
   );
+  const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<OrderSortKey>("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">(DEFAULT_SORT.date);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -88,6 +109,53 @@ export function OrdersDirectory({
       return r.searchBlob.includes(q);
     });
   }, [rows, query, dateFrom, dateTo, statusFilter]);
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "date") {
+        cmp =
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      } else if (sortKey === "total") {
+        cmp = a.totalAmount - b.totalAmount;
+      } else {
+        cmp = customerSortName(a).localeCompare(customerSortName(b), undefined, {
+          sensitivity: "base",
+        });
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return arr;
+  }, [filtered, sortKey, sortDir]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sorted.length / DATA_TABLE_PAGE_SIZE),
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
+
+  useEffect(() => {
+    setPage((p) => Math.min(p, totalPages));
+  }, [totalPages]);
+
+  const safePage = Math.min(page, totalPages);
+  const paged = useMemo(() => {
+    const start = (safePage - 1) * DATA_TABLE_PAGE_SIZE;
+    return sorted.slice(start, start + DATA_TABLE_PAGE_SIZE);
+  }, [sorted, safePage]);
+
+  function handleSort(key: OrderSortKey) {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir(DEFAULT_SORT[key]);
+    } else {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    }
+  }
 
   const hasActiveFilters =
     query.trim().length > 0 ||
@@ -186,10 +254,25 @@ export function OrdersDirectory({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Customer</TableHead>
+                  <SortableTableHead
+                    label="Date"
+                    isActive={sortKey === "date"}
+                    direction={sortKey === "date" ? sortDir : null}
+                    onSort={() => handleSort("date")}
+                  />
+                  <SortableTableHead
+                    label="Customer"
+                    isActive={sortKey === "customer"}
+                    direction={sortKey === "customer" ? sortDir : null}
+                    onSort={() => handleSort("customer")}
+                  />
                   <TableHead className="hidden xl:table-cell">Created by</TableHead>
-                  <TableHead>Total</TableHead>
+                  <SortableTableHead
+                    label="Total"
+                    isActive={sortKey === "total"}
+                    direction={sortKey === "total" ? sortDir : null}
+                    onSort={() => handleSort("total")}
+                  />
                   <TableHead>Remaining</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -220,7 +303,7 @@ export function OrdersDirectory({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((o) => (
+                  paged.map((o) => (
                     <TableRow key={o.id}>
                       <TableCell className="whitespace-nowrap text-zinc-600">
                         <div>{formatDate(new Date(o.createdAt))}</div>
@@ -270,6 +353,14 @@ export function OrdersDirectory({
               </TableBody>
             </Table>
           </div>
+
+          {rows.length > 0 && filtered.length > 0 ? (
+            <DataTablePagination
+              page={safePage}
+              totalItems={sorted.length}
+              onPageChange={setPage}
+            />
+          ) : null}
         </CardContent>
       </Card>
     </>

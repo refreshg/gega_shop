@@ -29,6 +29,8 @@ export type Product = {
   description: string | null;
   /** List price in minor currency units (e.g. tetri), null if unset */
   priceMinor: number | null;
+  /** Units on hand (optional catalog field) */
+  stock: number;
   createdBy: string;
 };
 

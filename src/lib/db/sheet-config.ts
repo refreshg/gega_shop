@@ -32,7 +32,14 @@ export const HEADERS: Record<string, readonly string[]> = {
     "createdAt",
     "createdBy",
   ],
-  [SHEETS.products]: ["id", "name", "description", "price", "createdBy"],
+  [SHEETS.products]: [
+    "id",
+    "name",
+    "description",
+    "price",
+    "stock",
+    "createdBy",
+  ],
   [SHEETS.salesOrders]: [
     "id",
     "customerId",
