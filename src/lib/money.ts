@@ -8,26 +8,42 @@ export function parseMoneyToMinor(input: string): number {
   return Math.round(n * 100);
 }
 
+/**
+ * Plain major-unit string with exactly two decimals (e.g. "2300.00").
+ * Empty input stays empty (for optional fields).
+ */
+export function formatCurrency(value: number | string): string {
+  if (value === "" || value === null || value === undefined) return "";
+  const n =
+    typeof value === "number"
+      ? value
+      : Number.parseFloat(String(value).replace(/[^\d.-]/g, ""));
+  if (Number.isNaN(n)) return "0.00";
+  return n.toFixed(2);
+}
+
+export function formatCurrencyFromMinor(minor: number): string {
+  return formatCurrency(minor / 100);
+}
+
+/** Legacy name — same as {@link formatCurrencyFromMinor}. */
 export function formatMinorToDisplay(minor: number): string {
-  return (minor / 100).toFixed(2);
+  return formatCurrencyFromMinor(minor);
+}
+
+/**
+ * Major-unit number for Google Sheets cells (avoids string/locale issues).
+ * Use with `addRow` / `assign` — library defaults to `USER_ENTERED`.
+ */
+export function minorToSheetNumber(minor: number): number {
+  return Number((minor / 100).toFixed(2));
 }
 
 export function formatMinorAsCurrency(
   minor: number,
   currencyCode = "GEL",
-  locale = "ka-GE",
 ): string {
-  const major = minor / 100;
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: currencyCode,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(major);
-  } catch {
-    return `${major.toFixed(2)} ${currencyCode}`;
-  }
+  return `${currencyCode} ${formatCurrencyFromMinor(minor)}`;
 }
 
 export function lineTotalMinor(

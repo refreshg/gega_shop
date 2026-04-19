@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { addPaymentToOrder, type AddPaymentResult } from "@/actions/payments";
 import { Button } from "@/components/ui/button";
+import { CurrencyField } from "@/components/features/currency-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMinorAsCurrency } from "@/lib/money";
@@ -15,6 +16,7 @@ type Props = {
 
 export function AddPaymentForm({ orderId, remainingMinor }: Props) {
   const router = useRouter();
+  const [amount, setAmount] = useState("");
 
   const [state, formAction] = useActionState(
     async (
@@ -51,12 +53,14 @@ export function AddPaymentForm({ orderId, remainingMinor }: Props) {
       </p>
       <div className="space-y-1">
         <Label htmlFor="amount">Amount</Label>
-        <Input
+        <CurrencyField
           id="amount"
           name="amount"
-          inputMode="decimal"
           placeholder="0.00"
           required
+          value={amount}
+          onChange={setAmount}
+          allowEmpty
         />
       </div>
       <div className="space-y-1">

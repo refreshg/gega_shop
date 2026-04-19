@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { ProductFormState } from "@/actions/products";
 import { Button } from "@/components/ui/button";
+import { CurrencyField } from "@/components/features/currency-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +17,7 @@ type Props = {
 
 export function ProductCreateForm({ action }: Props) {
   const [state, formAction] = useActionState(action, {});
+  const [price, setPrice] = useState("");
 
   return (
     <form action={formAction} className="grid max-w-xl gap-3">
@@ -32,11 +34,12 @@ export function ProductCreateForm({ action }: Props) {
       </div>
       <div className="space-y-1">
         <Label htmlFor="price">Default price (optional)</Label>
-        <Input
+        <CurrencyField
           id="price"
           name="price"
-          inputMode="decimal"
           placeholder="0.00"
+          value={price}
+          onChange={setPrice}
         />
         {state.fieldErrors?.price ? (
           <p className="text-xs text-red-600">{state.fieldErrors.price}</p>

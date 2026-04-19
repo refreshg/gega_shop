@@ -4,7 +4,7 @@ import {
   listPayments,
   updateSalesOrderStatus,
 } from "@/lib/db/sales-orders";
-import { formatMinorToDisplay, sumPaymentsMinor } from "@/lib/money";
+import { minorToSheetNumber, sumPaymentsMinor } from "@/lib/money";
 import { computeStatusAfterPayments } from "@/lib/order-status";
 
 export async function appendPayment(input: {
@@ -19,7 +19,7 @@ export async function appendPayment(input: {
   await sheet.addRow({
     id: crypto.randomUUID(),
     orderId: input.orderId,
-    amountPaid: formatMinorToDisplay(input.amountPaidMinor),
+    amountPaid: minorToSheetNumber(input.amountPaidMinor),
     paymentDate: input.paymentDate.toISOString(),
     method: input.method,
     processedBy: input.processedBy,
@@ -72,7 +72,7 @@ export async function addPaymentAndUpdateStatus(input: {
     if (!/[.,]\d{1,2}\s*$/.test(s)) {
       const minor = Number.parseInt(s.replace(/,/g, ""), 10);
       if (!Number.isNaN(minor)) {
-        r.assign({ amountPaid: formatMinorToDisplay(minor) });
+        r.assign({ amountPaid: minorToSheetNumber(minor) });
         await r.save();
       }
     }

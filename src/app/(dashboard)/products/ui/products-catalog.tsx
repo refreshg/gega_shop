@@ -198,7 +198,7 @@ export function ProductsCatalog({ products }: { products: ProductListItem[] }) {
                     <TableCell className="max-w-xs truncate text-zinc-600">
                       {p.description ?? "—"}
                     </TableCell>
-                    <TableCell className="tabular-nums">
+                    <TableCell className="font-variant-numeric tabular-nums">
                       {p.priceMinor != null
                         ? formatMinorAsCurrency(p.priceMinor)
                         : "—"}

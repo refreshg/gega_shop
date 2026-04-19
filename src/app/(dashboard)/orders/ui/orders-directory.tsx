@@ -326,10 +326,10 @@ export function OrdersDirectory({
                       <TableCell className="hidden text-sm text-zinc-600 xl:table-cell">
                         {o.createdBy || "—"}
                       </TableCell>
-                      <TableCell className="tabular-nums">
+                      <TableCell className="font-variant-numeric tabular-nums">
                         {formatMinorAsCurrency(o.totalAmount)}
                       </TableCell>
-                      <TableCell className="tabular-nums">
+                      <TableCell className="font-variant-numeric tabular-nums">
                         {formatMinorAsCurrency(o.remaining)}
                       </TableCell>
                       <TableCell>

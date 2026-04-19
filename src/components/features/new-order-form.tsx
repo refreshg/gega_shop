@@ -2,9 +2,10 @@
 
 import type { Customer, Product } from "@/types";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { createSalesOrder } from "@/actions/orders";
 import { Button } from "@/components/ui/button";
+import { formatCurrency, formatCurrencyFromMinor } from "@/lib/money";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,19 +42,6 @@ export function NewOrderForm({ customers, products }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const lineItemsJson = useMemo(
-    () =>
-      JSON.stringify(
-        lines.map((l) => ({
-          productId: l.productId || undefined,
-          quantity: l.quantity,
-          description: l.description,
-          unitPrice: l.unitPrice,
-        })),
-      ),
-    [lines],
-  );
-
   function applyProductDefaults(index: number, productId: string) {
     const p = products.find((x) => x.id === productId);
     setLines((prev) => {
@@ -63,7 +51,7 @@ export function NewOrderForm({ customers, products }: Props) {
       if (p) {
         row.description = p.name;
         if (p.priceMinor != null) {
-          row.unitPrice = (p.priceMinor / 100).toFixed(2);
+          row.unitPrice = formatCurrencyFromMinor(p.priceMinor);
         }
       }
       next[index] = row;
@@ -77,8 +65,26 @@ export function NewOrderForm({ customers, products }: Props) {
       onSubmit={(e) => {
         e.preventDefault();
         setError(null);
+        const linesPayload = lines.map((l) => ({
+          productId: l.productId || undefined,
+          quantity: l.quantity,
+          description: l.description,
+          unitPrice: l.unitPrice.trim() ? formatCurrency(l.unitPrice) : "",
+        }));
+        const ipFormatted = initialPayment.trim()
+          ? formatCurrency(initialPayment)
+          : "";
+        setLines((prev) =>
+          prev.map((l, i) => ({
+            ...l,
+            unitPrice: linesPayload[i]?.unitPrice ?? "",
+          })),
+        );
+        setInitialPayment(ipFormatted);
+
         const fd = new FormData(e.currentTarget);
-        fd.set("lineItemsJson", lineItemsJson);
+        fd.set("lineItemsJson", JSON.stringify(linesPayload));
+        fd.set("initialPayment", ipFormatted);
         startTransition(async () => {
           const res = await createSalesOrder(fd);
           if (res.ok) {
@@ -155,11 +161,23 @@ export function NewOrderForm({ customers, products }: Props) {
                 <Label className="text-xs text-zinc-500">Unit price</Label>
                 <Input
                   inputMode="decimal"
+                  className="tabular-nums"
                   value={line.unitPrice}
                   onChange={(e) =>
                     setLines((prev) => {
                       const n = [...prev];
                       n[i] = { ...n[i], unitPrice: e.target.value };
+                      return n;
+                    })
+                  }
+                  onBlur={() =>
+                    setLines((prev) => {
+                      const n = [...prev];
+                      const t = n[i].unitPrice.trim();
+                      n[i] = {
+                        ...n[i],
+                        unitPrice: t === "" ? "" : formatCurrency(t),
+                      };
                       return n;
                     })
                   }
@@ -228,8 +246,14 @@ export function NewOrderForm({ customers, products }: Props) {
           <Input
             id="initialPayment"
             name="initialPayment"
+            className="tabular-nums"
             value={initialPayment}
             onChange={(e) => setInitialPayment(e.target.value)}
+            onBlur={() =>
+              setInitialPayment((p) =>
+                p.trim() === "" ? "" : formatCurrency(p),
+              )
+            }
             inputMode="decimal"
             placeholder="0.00"
           />
