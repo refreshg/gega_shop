@@ -12,7 +12,7 @@ import {
   parseMoneyCellToMinor,
   parseOrderStatus,
 } from "@/lib/db/parse";
-import { minorToSheetNumber } from "@/lib/money";
+import { minorToSheetValue } from "@/lib/money";
 import type {
   Customer,
   OrderLineItem,
@@ -211,7 +211,7 @@ export async function updateSalesOrderStatus(
   const row = rows.find((r) => String(r.get("id") ?? "").trim() === orderId);
   if (!row) throw new Error("Order not found");
   const currentTotalMinor = parseMoneyCellToMinor(row.get("totalAmount"));
-  row.assign({ status, totalAmount: minorToSheetNumber(currentTotalMinor) });
+  row.assign({ status, totalAmount: minorToSheetValue(currentTotalMinor) });
   await row.save();
 }
 
@@ -252,7 +252,7 @@ export async function createOrderSequential(
     await orderSheet.addRow({
       id: orderId,
       customerId: input.customerId,
-      totalAmount: minorToSheetNumber(input.totalAmount),
+      totalAmount: minorToSheetValue(input.totalAmount),
       status: input.status,
       paymentTerms: input.paymentTerms,
       createdAt,
@@ -272,7 +272,7 @@ export async function createOrderSequential(
         orderId,
         productId: line.productId ?? "",
         quantity: String(line.quantity),
-        unitPrice: minorToSheetNumber(line.unitPriceMinor),
+        unitPrice: minorToSheetValue(line.unitPriceMinor),
         description: line.description,
       });
     }
@@ -288,7 +288,7 @@ export async function createOrderSequential(
       await paySheet.addRow({
         id: crypto.randomUUID(),
         orderId,
-        amountPaid: minorToSheetNumber(input.initialPayment.amountMinor),
+        amountPaid: minorToSheetValue(input.initialPayment.amountMinor),
         paymentDate: input.initialPayment.paymentDate.toISOString(),
         method: input.initialPayment.method,
         processedBy: input.processedBy,

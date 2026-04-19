@@ -9,32 +9,46 @@ export function parseIntSafe(v: string | number | undefined | null): number {
 }
 
 /**
- * Money stored in sheets may be either:
- * - minor units (legacy): 255600
- * - major units (preferred for readability): 2556.00
+ * Converts a sheet cell to **minor units** (tetri) for internal math.
+ *
+ * - Values **with** a decimal separator are **major GEL** (e.g. `230.00` → 23000 tetri).
+ * - Plain integers **>= 10000** are treated as **legacy tetri** (no decimal in old rows).
+ * - Plain integers **< 10000** are treated as **major GEL** (e.g. `230` → 230.00 GEL).
  */
 export function parseMoneyCellToMinor(
   v: string | number | undefined | null,
 ): number {
   if (v === undefined || v === null || v === "") return 0;
+
   if (typeof v === "number") {
     if (!Number.isFinite(v)) return 0;
-    // Heuristic: small integers are likely major units (e.g. 2556),
-    // large integers are likely legacy minor units.
-    if (Number.isInteger(v) && Math.abs(v) >= 100000) return v;
-    return Math.round(v * 100);
+    if (!Number.isInteger(v)) {
+      return Math.round(v * 100);
+    }
+    const n = v;
+    if (Math.abs(n) >= 100000) return n;
+    if (Math.abs(n) >= 10000) return n;
+    return Math.round(n * 100);
   }
+
   const s = String(v).trim();
   if (!s) return 0;
-  // If it has a decimal separator, treat as major currency.
-  if (/[.,]\d{1,2}\s*$/.test(s)) {
-    return parseMoneyToMinor(s);
+
+  // Explicit decimal → major units (comma or dot)
+  if (/[.,]\d/.test(s)) {
+    const normalized = s.replace(/\s/g, "").replace(",", ".");
+    return parseMoneyToMinor(normalized);
   }
-  // Digits-only strings are treated as legacy minor units.
-  if (/^\d+$/.test(s.replace(/,/g, ""))) {
-    return parseIntSafe(s);
+
+  const digitsOnly = s.replace(/[,\s]/g, "");
+  if (/^\d+$/.test(digitsOnly)) {
+    const n = Number.parseInt(digitsOnly, 10);
+    if (Number.isNaN(n)) return 0;
+    if (n >= 100000) return n;
+    if (n >= 10000) return n;
+    return parseMoneyToMinor(digitsOnly);
   }
-  // Fallback: parse as major.
+
   return parseMoneyToMinor(s);
 }
 

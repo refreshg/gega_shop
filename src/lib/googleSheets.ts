@@ -107,6 +107,10 @@ export function resetGoogleSpreadsheetClientCache(): void {
 /**
  * Authenticates with the service account and returns the spreadsheet document.
  * The same instance is reused for the lifetime of the Node process.
+ *
+ * Money cells should be written as decimal strings (e.g. `"230.00"`). The
+ * `google-spreadsheet` row APIs use `valueInputOption: USER_ENTERED` by default
+ * (not RAW), so Sheets parses decimals correctly for the document locale.
  */
 export async function getGoogleSpreadsheet(): Promise<GoogleSpreadsheet> {
   if (!docPromise) {

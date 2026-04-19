@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 
 import { getReadySpreadsheet, SHEETS } from "@/lib/db/sheet-config";
 import { parseIntSafe, parseMoneyCellToMinor } from "@/lib/db/parse";
-import { minorToSheetNumber } from "@/lib/money";
+import { minorToSheetValue } from "@/lib/money";
 import type { Product } from "@/types";
 
 function rowToProduct(row: GoogleSpreadsheetRow): Product {
@@ -61,7 +61,7 @@ export async function appendProduct(
     price:
       data.priceMinor === null || data.priceMinor === undefined
         ? ""
-        : minorToSheetNumber(data.priceMinor),
+        : minorToSheetValue(data.priceMinor),
     stock: String(data.stock ?? 0),
     createdBy: data.createdBy,
   });

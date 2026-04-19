@@ -1,10 +1,11 @@
 import { getReadySpreadsheet, SHEETS } from "@/lib/db/sheet-config";
+import { parseMoneyCellToMinor } from "@/lib/db/parse";
 import {
   getSalesOrderById,
   listPayments,
   updateSalesOrderStatus,
 } from "@/lib/db/sales-orders";
-import { minorToSheetNumber, sumPaymentsMinor } from "@/lib/money";
+import { formatCurrencyFromMinor, minorToSheetValue, sumPaymentsMinor } from "@/lib/money";
 import { computeStatusAfterPayments } from "@/lib/order-status";
 
 export async function appendPayment(input: {
@@ -19,7 +20,7 @@ export async function appendPayment(input: {
   await sheet.addRow({
     id: crypto.randomUUID(),
     orderId: input.orderId,
-    amountPaid: minorToSheetNumber(input.amountPaidMinor),
+    amountPaid: minorToSheetValue(input.amountPaidMinor),
     paymentDate: input.paymentDate.toISOString(),
     method: input.method,
     processedBy: input.processedBy,
@@ -46,7 +47,7 @@ export async function addPaymentAndUpdateStatus(input: {
   const remaining = order.totalAmount - paid;
   if (input.amountPaidMinor > remaining) {
     throw new Error(
-      `Payment exceeds remaining balance (${(remaining / 100).toFixed(2)}).`,
+      `Payment exceeds remaining balance (${formatCurrencyFromMinor(remaining)} GEL).`,
     );
   }
 
@@ -68,13 +69,10 @@ export async function addPaymentAndUpdateStatus(input: {
     const cur = r.get("amountPaid");
     const s = String(cur ?? "").trim();
     if (!s) continue;
-    // If no decimal separator, assume legacy minor units and rewrite.
-    if (!/[.,]\d{1,2}\s*$/.test(s)) {
-      const minor = Number.parseInt(s.replace(/,/g, ""), 10);
-      if (!Number.isNaN(minor)) {
-        r.assign({ amountPaid: minorToSheetNumber(minor) });
-        await r.save();
-      }
+    if (!/[.,]\d/.test(s)) {
+      const minor = parseMoneyCellToMinor(cur);
+      r.assign({ amountPaid: minorToSheetValue(minor) });
+      await r.save();
     }
   }
 

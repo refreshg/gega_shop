@@ -1,9 +1,16 @@
 /** All persisted amounts use minor units (e.g. tetri for GEL). */
 
 export function parseMoneyToMinor(input: string): number {
-  const cleaned = input.replace(/[^\d.-]/g, "").trim();
-  if (!cleaned) return 0;
-  const n = Number.parseFloat(cleaned);
+  let t = String(input).trim();
+  if (!t) return 0;
+  // "230,50" / "1 230,50" style → decimal comma
+  const compact = t.replace(/\s/g, "");
+  if (/^\d+[,.]\d{1,2}$/.test(compact)) {
+    t = compact.replace(",", ".");
+  } else {
+    t = t.replace(/[^\d.-]/g, "");
+  }
+  const n = Number.parseFloat(t);
   if (Number.isNaN(n)) return 0;
   return Math.round(n * 100);
 }
@@ -32,11 +39,17 @@ export function formatMinorToDisplay(minor: number): string {
 }
 
 /**
- * Major-unit number for Google Sheets cells (avoids string/locale issues).
- * Use with `addRow` / `assign` — library defaults to `USER_ENTERED`.
+ * Major-unit value for Google Sheets money cells.
+ * Always use a decimal string (e.g. `"230.00"`) with `USER_ENTERED` so the sheet
+ * keeps two decimals and reads back as major GEL, not legacy tetri integers.
  */
-export function minorToSheetNumber(minor: number): number {
-  return Number((minor / 100).toFixed(2));
+export function minorToSheetValue(minor: number): string {
+  return formatCurrencyFromMinor(minor);
+}
+
+/** @deprecated Prefer {@link minorToSheetValue} for clarity. */
+export function minorToSheetNumber(minor: number): string {
+  return minorToSheetValue(minor);
 }
 
 export function formatMinorAsCurrency(
