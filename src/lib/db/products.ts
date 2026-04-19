@@ -2,7 +2,8 @@ import type { GoogleSpreadsheetRow } from "google-spreadsheet";
 import { unstable_cache } from "next/cache";
 
 import { getReadySpreadsheet, SHEETS } from "@/lib/db/sheet-config";
-import { parseIntSafe } from "@/lib/db/parse";
+import { parseIntSafe, parseMoneyCellToMinor } from "@/lib/db/parse";
+import { formatMinorToDisplay } from "@/lib/money";
 import type { Product } from "@/types";
 
 function rowToProduct(row: GoogleSpreadsheetRow): Product {
@@ -10,7 +11,7 @@ function rowToProduct(row: GoogleSpreadsheetRow): Product {
   const priceMinor =
     priceRaw === "" || priceRaw === undefined || priceRaw === null
       ? null
-      : parseIntSafe(priceRaw);
+      : parseMoneyCellToMinor(priceRaw);
   const stockRaw = row.get("stock");
   const stock =
     stockRaw === "" || stockRaw === undefined || stockRaw === null
@@ -60,7 +61,7 @@ export async function appendProduct(
     price:
       data.priceMinor === null || data.priceMinor === undefined
         ? ""
-        : String(data.priceMinor),
+        : formatMinorToDisplay(data.priceMinor),
     stock: String(data.stock ?? 0),
     createdBy: data.createdBy,
   });

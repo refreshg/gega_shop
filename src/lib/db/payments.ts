@@ -4,7 +4,7 @@ import {
   listPayments,
   updateSalesOrderStatus,
 } from "@/lib/db/sales-orders";
-import { sumPaymentsMinor } from "@/lib/money";
+import { formatMinorToDisplay, sumPaymentsMinor } from "@/lib/money";
 import { computeStatusAfterPayments } from "@/lib/order-status";
 
 export async function appendPayment(input: {
@@ -19,7 +19,7 @@ export async function appendPayment(input: {
   await sheet.addRow({
     id: crypto.randomUUID(),
     orderId: input.orderId,
-    amountPaid: String(input.amountPaidMinor),
+    amountPaid: formatMinorToDisplay(input.amountPaidMinor),
     paymentDate: input.paymentDate.toISOString(),
     method: input.method,
     processedBy: input.processedBy,
@@ -57,6 +57,26 @@ export async function addPaymentAndUpdateStatus(input: {
     paymentDate: input.paymentDate,
     processedBy: input.processedBy,
   });
+  // Convert legacy minor-unit payment rows to readable decimals as we touch them.
+  const doc = await getReadySpreadsheet();
+  const sheet = doc.sheetsByTitle[SHEETS.payments];
+  const payRows = await sheet.getRows();
+  const toFix = payRows.filter(
+    (r) => String(r.get("orderId") ?? "").trim() === input.orderId,
+  );
+  for (const r of toFix) {
+    const cur = r.get("amountPaid");
+    const s = String(cur ?? "").trim();
+    if (!s) continue;
+    // If no decimal separator, assume legacy minor units and rewrite.
+    if (!/[.,]\d{1,2}\s*$/.test(s)) {
+      const minor = Number.parseInt(s.replace(/,/g, ""), 10);
+      if (!Number.isNaN(minor)) {
+        r.assign({ amountPaid: formatMinorToDisplay(minor) });
+        await r.save();
+      }
+    }
+  }
 
   const newPaid = paid + input.amountPaidMinor;
   const status = computeStatusAfterPayments({

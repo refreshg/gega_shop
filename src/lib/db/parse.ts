@@ -1,10 +1,41 @@
 import type { SalesOrderStatus } from "@/types";
+import { parseMoneyToMinor } from "@/lib/money";
 
 export function parseIntSafe(v: string | number | undefined | null): number {
   if (v === undefined || v === null || v === "") return 0;
   if (typeof v === "number") return Number.isFinite(v) ? Math.trunc(v) : 0;
   const n = Number.parseInt(String(v).replace(/,/g, ""), 10);
   return Number.isNaN(n) ? 0 : n;
+}
+
+/**
+ * Money stored in sheets may be either:
+ * - minor units (legacy): 255600
+ * - major units (preferred for readability): 2556.00
+ */
+export function parseMoneyCellToMinor(
+  v: string | number | undefined | null,
+): number {
+  if (v === undefined || v === null || v === "") return 0;
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) return 0;
+    // Heuristic: small integers are likely major units (e.g. 2556),
+    // large integers are likely legacy minor units.
+    if (Number.isInteger(v) && Math.abs(v) >= 100000) return v;
+    return Math.round(v * 100);
+  }
+  const s = String(v).trim();
+  if (!s) return 0;
+  // If it has a decimal separator, treat as major currency.
+  if (/[.,]\d{1,2}\s*$/.test(s)) {
+    return parseMoneyToMinor(s);
+  }
+  // Digits-only strings are treated as legacy minor units.
+  if (/^\d+$/.test(s.replace(/,/g, ""))) {
+    return parseIntSafe(s);
+  }
+  // Fallback: parse as major.
+  return parseMoneyToMinor(s);
 }
 
 export function parseBool(v: string | boolean | undefined | null): boolean {

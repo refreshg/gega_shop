@@ -9,8 +9,10 @@ import {
   parseBool,
   parseDate,
   parseIntSafe,
+  parseMoneyCellToMinor,
   parseOrderStatus,
 } from "@/lib/db/parse";
+import { formatMinorToDisplay } from "@/lib/money";
 import type {
   Customer,
   OrderLineItem,
@@ -24,7 +26,7 @@ function rowToSalesOrder(row: GoogleSpreadsheetRow): SalesOrder {
   return {
     id: String(row.get("id") ?? "").trim(),
     customerId: String(row.get("customerId") ?? "").trim(),
-    totalAmount: parseIntSafe(row.get("totalAmount")),
+    totalAmount: parseMoneyCellToMinor(row.get("totalAmount")),
     status: parseOrderStatus(String(row.get("status") ?? "")),
     paymentTerms: String(row.get("paymentTerms") ?? ""),
     isConsignment: parseBool(row.get("isConsignment")),
@@ -40,7 +42,7 @@ function rowToOrderItem(row: GoogleSpreadsheetRow): OrderLineItem {
     orderId: String(row.get("orderId") ?? "").trim(),
     productId: pid === "" ? null : pid,
     quantity: Math.max(1, parseIntSafe(row.get("quantity"))),
-    unitPriceMinor: parseIntSafe(row.get("unitPrice")),
+    unitPriceMinor: parseMoneyCellToMinor(row.get("unitPrice")),
     description: String(row.get("description") ?? "").trim(),
   };
 }
@@ -100,7 +102,7 @@ function rowToPayment(row: GoogleSpreadsheetRow): Payment {
   return {
     id: String(row.get("id") ?? "").trim(),
     orderId: String(row.get("orderId") ?? "").trim(),
-    amountPaidMinor: parseIntSafe(row.get("amountPaid")),
+    amountPaidMinor: parseMoneyCellToMinor(row.get("amountPaid")),
     paymentDate: parseDate(String(row.get("paymentDate") ?? "")),
     method: String(row.get("method") ?? "").trim() || "Unknown",
     processedBy: String(row.get("processedBy") ?? "").trim(),
@@ -208,7 +210,8 @@ export async function updateSalesOrderStatus(
   const rows = await sheet.getRows();
   const row = rows.find((r) => String(r.get("id") ?? "").trim() === orderId);
   if (!row) throw new Error("Order not found");
-  row.assign({ status });
+  const currentTotalMinor = parseMoneyCellToMinor(row.get("totalAmount"));
+  row.assign({ status, totalAmount: formatMinorToDisplay(currentTotalMinor) });
   await row.save();
 }
 
@@ -249,7 +252,7 @@ export async function createOrderSequential(
     await orderSheet.addRow({
       id: orderId,
       customerId: input.customerId,
-      totalAmount: String(input.totalAmount),
+      totalAmount: formatMinorToDisplay(input.totalAmount),
       status: input.status,
       paymentTerms: input.paymentTerms,
       createdAt,
@@ -269,7 +272,7 @@ export async function createOrderSequential(
         orderId,
         productId: line.productId ?? "",
         quantity: String(line.quantity),
-        unitPrice: String(line.unitPriceMinor),
+        unitPrice: formatMinorToDisplay(line.unitPriceMinor),
         description: line.description,
       });
     }
@@ -285,7 +288,7 @@ export async function createOrderSequential(
       await paySheet.addRow({
         id: crypto.randomUUID(),
         orderId,
-        amountPaid: String(input.initialPayment.amountMinor),
+        amountPaid: formatMinorToDisplay(input.initialPayment.amountMinor),
         paymentDate: input.initialPayment.paymentDate.toISOString(),
         method: input.initialPayment.method,
         processedBy: input.processedBy,
